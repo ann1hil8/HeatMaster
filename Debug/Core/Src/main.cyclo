@@ -1,5 +1,12 @@
-../Core/Src/main.c:68:5:main	1
-../Core/Src/main.c:120:6:SystemClock_Config	3
-../Core/Src/main.c:162:13:MX_USART3_UART_Init	2
-../Core/Src/main.c:197:13:MX_GPIO_Init	1
-../Core/Src/main.c:301:6:Error_Handler	1
+../Core/Src/main.c:74:11:SetHandler	1
+../Core/Src/main.c:82:11:IdleHandler	1
+../Core/Src/main.c:87:11:HeatHandler	1
+../Core/Src/main.c:92:11:CoolHandler	1
+../Core/Src/main.c:97:11:RangeHandler	1
+../Core/Src/main.c:106:6:displayStatus	1
+../Core/Src/main.c:112:6:displayFinishedMSG	1
+../Core/Src/main.c:121:5:main	8
+../Core/Src/main.c:193:6:SystemClock_Config	3
+../Core/Src/main.c:235:13:MX_USART3_UART_Init	2
+../Core/Src/main.c:270:13:MX_GPIO_Init	1
+../Core/Src/main.c:374:6:Error_Handler	1

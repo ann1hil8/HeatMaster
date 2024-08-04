@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,7 +59,59 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+char msg[128]; //Buffer for string that will be sent through UART3
+bool food_cooked = false;
 
+typedef enum {
+	Set_State,
+	Idle_State,
+	Heat_State,
+	Cool_State,
+	Range_State,
+	Off_State
+} FSM_State;
+
+FSM_State SetHandler(void){
+	if(1){ // needs more cooking
+		return Range_State;
+	} else { // done cooking
+		return Off_State;
+	}
+}
+
+FSM_State IdleHandler(void){
+	// Insert code to handle the Idle state.
+	return Set_State;
+}
+
+FSM_State HeatHandler(void){
+	// Insert code to handle the Heat state.
+	return Idle_State;
+}
+
+FSM_State CoolHandler(void){
+	// Insert code to handle the Cool state.
+	return Idle_State;
+}
+
+FSM_State RangeHandler(void){
+	// Insert code to handle the Range state.
+	if(1){ // needs to heat
+		return Heat_State;
+	} else { // needs to cool
+		return Cool_State;
+	}
+}
+
+void displayStatus(){
+	  sprintf(msg, "HeatMaster Status:\r\n");
+	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	  //HAL_Delay(500); // 500ms delay before we send next message.
+}
+
+void displayFinishedMSG(){
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -92,9 +145,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  char msg[128]; //Buffer for string that will be sent through UART3
-  float fCount=0.0; // floating point variable that will be incremented.
-  uint32_t iCount = 0; // 32-bit unsigned integer variable that will be incremented.
+  FSM_State NextState = Set_State;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -104,11 +155,33 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  sprintf(msg, "Hello World : Unsigned Integer Count %lu, Float Count %f\r\n", iCount, fCount);
-	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
-	  HAL_Delay(500); // 500ms delay before we send next message.
-	  iCount++; // Increment iCount variable by 1.
-	  fCount += 0.1; // Increment fCount variable by 0.1.
+	  // Here is our FSM that will continue to loop while the food is not cooked.
+	  while(!food_cooked){
+		  switch(NextState){
+		  case Set_State:
+			  NextState = SetHandler();
+			  break;
+		  case Idle_State:
+			  NextState = IdleHandler();
+			  break;
+		  case Heat_State:
+			  NextState = HeatHandler();
+			  break;
+		  case Cool_State:
+			  NextState = CoolHandler();
+			  break;
+		  case Range_State:
+			  NextState = RangeHandler();
+			  break;
+		  case Off_State:
+			  food_cooked = true;
+			  break;
+		  default:
+			  break;
+		  }
+		  displayStatus();
+  	  }
+	  displayFinishedMSG();
   }
   /* USER CODE END 3 */
 }

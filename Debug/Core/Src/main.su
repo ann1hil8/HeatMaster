@@ -1,12 +1,16 @@
-../Core/Src/main.c:74:11:SetHandler	4	static
-../Core/Src/main.c:82:11:IdleHandler	4	static
-../Core/Src/main.c:87:11:HeatHandler	4	static
-../Core/Src/main.c:92:11:CoolHandler	4	static
-../Core/Src/main.c:97:11:RangeHandler	4	static
-../Core/Src/main.c:106:6:displayStatus	8	static
-../Core/Src/main.c:112:6:displayFinishedMSG	4	static
-../Core/Src/main.c:121:5:main	16	static
-../Core/Src/main.c:193:6:SystemClock_Config	88	static
-../Core/Src/main.c:235:13:MX_USART3_UART_Init	8	static
-../Core/Src/main.c:270:13:MX_GPIO_Init	56	static
-../Core/Src/main.c:374:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.cpp:94:6:void displayStatus()	16	static
+../Core/Src/main.cpp:104:6:void displayFinishedMSG()	8	static
+../Core/Src/main.cpp:109:6:void getTemps()	4	static
+../Core/Src/main.cpp:115:11:FSM_State SetHandler()	4	static
+../Core/Src/main.cpp:123:11:FSM_State IdleHandler()	8	static
+../Core/Src/main.cpp:130:11:FSM_State HeatHandler()	4	static
+../Core/Src/main.cpp:140:11:FSM_State CoolHandler()	4	static
+../Core/Src/main.cpp:148:11:FSM_State RangeHandler()	8	static
+../Core/Src/main.cpp:164:5:int main()	16	static
+../Core/Src/main.cpp:240:6:void SystemClock_Config()	88	static
+../Core/Src/main.cpp:282:13:void MX_TIM1_Init()	40	static
+../Core/Src/main.cpp:329:13:void MX_USART3_UART_Init()	8	static
+../Core/Src/main.cpp:364:13:void MX_GPIO_Init()	56	static
+../Core/Src/main.cpp:468:6:void Error_Handler()	4	static,ignoring_inline_asm
+../Core/Src/main.cpp:477:1:void __static_initialization_and_destruction_0(int, int)	16	static
+../Core/Src/main.cpp:477:1:cpp)	8	static

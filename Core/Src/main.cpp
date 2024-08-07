@@ -44,6 +44,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+TIM_HandleTypeDef htim1;
+
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
@@ -53,6 +55,7 @@ UART_HandleTypeDef huart3;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_TIM1_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -60,11 +63,23 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//DS18B20 meat_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_Pin_13);
-//DS18B20 grill_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_Pin_13);
-//DS18B20 fire_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_Pin_13);
+DS18B20 meat_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_PIN_13);
+DS18B20 grill_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_PIN_13);
+DS18B20 flame_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_PIN_13);
+
+struct Temps {
+	float cur_meat;
+	float cur_grill;
+	float cur_flame;
+	float set_meat;
+	float set_grill;
+	float set_flame;
+};
+
+struct Temps temps;
 
 char msg[128]; //Buffer for string that will be sent through UART3
+
 bool food_cooked = false;
 
 typedef enum {
@@ -76,8 +91,29 @@ typedef enum {
 	Off_State
 } FSM_State;
 
+void displayStatus(){
+	  sprintf(msg, "HeatMaster Status:\r\n");
+	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	  sprintf(msg, "Meat Set:  %.2f\tCur: %.2f\r\n", temps.set_meat, temps.cur_meat);
+	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	  sprintf(msg, "Grill Set: %.2f\tCur: %.2f\r\n", temps.set_grill, temps.cur_grill);
+	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	  HAL_Delay(500); // 500ms delay before we send next message.
+}
+
+void displayFinishedMSG(){
+	sprintf(msg, "HeatMaster Finished!\r\n");
+	HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+}
+
+void getTemps(void){
+	//temps.cur_meat = meat_temp_sensor.read_temp_fahrenheit();;
+	//temps.cur_grill = grill_temp_sensor.read_temp_fahrenheit();;
+	//temps.cur_flame = flame_temp_sensor.read_temp_fahrenheit();;
+}
+
 FSM_State SetHandler(void){
-	if(1){ // needs more cooking
+	if(temps.cur_meat < temps.set_meat){ // needs more cooking
 		return Range_State;
 	} else { // done cooking
 		return Off_State;
@@ -86,36 +122,37 @@ FSM_State SetHandler(void){
 
 FSM_State IdleHandler(void){
 	// Insert code to handle the Idle state.
+	displayStatus();
+	//HAL_Delay(500);
 	return Set_State;
 }
 
 FSM_State HeatHandler(void){
 	// Insert code to handle the Heat state.
+	// bump up the heat a little
+	// if the servo is maxed out then stay maxed out
+	// if the grill is off then turn the grill on
+	temps.cur_meat += 1;
+	temps.cur_grill += 2;
 	return Idle_State;
 }
 
 FSM_State CoolHandler(void){
 	// Insert code to handle the Cool state.
+	// turn the heat down a little
+	// if the servo is maxed out then turn the grill off.
+	temps.cur_grill -= 1;
 	return Idle_State;
 }
 
 FSM_State RangeHandler(void){
 	// Insert code to handle the Range state.
-	if(1){ // needs to heat
+	getTemps();
+	if(temps.cur_grill < temps.set_grill){ // needs to heat
 		return Heat_State;
 	} else { // needs to cool
 		return Cool_State;
 	}
-}
-
-void displayStatus(){
-	  sprintf(msg, "HeatMaster Status:\r\n");
-	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
-	  //HAL_Delay(500); // 500ms delay before we send next message.
-}
-
-void displayFinishedMSG(){
-
 }
 
 /* USER CODE END 0 */
@@ -149,16 +186,20 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_TIM1_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
   FSM_State NextState = Set_State;
+  temps.set_grill = 350.00;
+  temps.cur_grill = 300.00;
+  temps.set_meat = 165.00;
+  temps.cur_meat = 140.00;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-
+  //while (1)
+  //{
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -186,12 +227,11 @@ int main(void)
 		  default:
 			  break;
 		  }
-		  displayStatus();
-  	  }
+	  }
 	  displayFinishedMSG();
   }
   /* USER CODE END 3 */
-}
+//}
 
 /**
   * @brief System Clock Configuration
@@ -232,6 +272,53 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 16-1;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 0xFFF-1;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+
 }
 
 /**

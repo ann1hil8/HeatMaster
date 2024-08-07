@@ -36,12 +36,17 @@
 /* USER CODE BEGIN PD */
 #define MEAT_TEMP 165
 #define GRILL_TEMP 350
-#define MEAT_PIN GPIO_PIN_13
-#define MEAT_PORT GPIOB
-#define GRILL_PIN GPIO_PIN_14
-#define GRILL_PORT GPIOB
-#define FLAME_PIN GPIO_PIN_15
-#define FLAME_PORT GPIOB
+#define MEAT_PIN GPIO_PIN_6
+#define MEAT_PORT GPIOD
+#define GRILL_PIN GPIO_PIN_7
+#define GRILL_PORT GPIOD
+#define FLAME_PIN GPIO_PIN_5
+#define FLAME_PORT GPIOD
+
+#define IGNITION_PIN GPIO_PIN_4
+#define IGNITION_PORT GPIOD
+#define SOLENOID_PIN GPIO_PIN_3
+#define SOLENOID_PORT GPIOD
 //#define MOTOR_PWM_PIN PE9
 
 #define PWM_MIN 3250
@@ -56,6 +61,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart3;
 
@@ -68,15 +74,16 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-DS18B20 meat_temp_sensor = DS18B20(&htim1, MEAT_PORT, MEAT_PIN);
-DS18B20 grill_temp_sensor = DS18B20(&htim1, GRILL_PORT, GRILL_PIN);
-DS18B20 flame_temp_sensor = DS18B20(&htim1, FLAME_PORT, FLAME_PIN);
+DS18B20 meat_temp_sensor = DS18B20(&htim3, MEAT_PORT, MEAT_PIN);
+DS18B20 grill_temp_sensor = DS18B20(&htim3, GRILL_PORT, GRILL_PIN);
+DS18B20 flame_temp_sensor = DS18B20(&htim3, FLAME_PORT, FLAME_PIN);
 
 struct Temps {
 	float cur_meat;
@@ -103,16 +110,38 @@ typedef enum {
 	Off_State
 } FSM_State;
 
+void getTemps(void){
+	temps.cur_meat = meat_temp_sensor.read_temp_fahrenheit();
+	temps.cur_grill = grill_temp_sensor.read_temp_fahrenheit();
+	temps.cur_flame = flame_temp_sensor.read_temp_fahrenheit();
+}
+
+bool ignition(){
+	HAL_GPIO_WritePin(IGNITION_PORT, IGNITION_PIN, GPIO_PIN_SET);
+	HAL_Delay(1000);
+	HAL_GPIO_WritePin(IGNITION_PORT, IGNITION_PIN, GPIO_PIN_RESET);
+	getTemps();
+	if(temps.cur_flame > temps.cur_grill){
+		return true;
+	} else {
+		return false;
+	}
+}
+
 void turnGrillOn(){
 	// turn servo on
-	// open solenoid
-	// loop ignite flame until flame
+	TIM1->CCR1 = PWM_MAX;
+	HAL_GPIO_WritePin(SOLENOID_PORT, SOLENOID_PIN, GPIO_PIN_SET); // open solenoid
+	while(ignition()){  // loop ignite flame until flame
+		HAL_Delay(500);
+	}
 	isGrillOn = true;
 }
 
 void turnGrillOff(){
 	// turn servo off
-	// close solenoid
+	TIM1->CCR1 = PWM_MIN;
+	HAL_GPIO_WritePin(SOLENOID_PORT, SOLENOID_PIN, GPIO_PIN_RESET); // close solenoid
 	isGrillOn = false;
 }
 
@@ -142,12 +171,6 @@ void displayStatus(){
 void displayFinishedMSG(){
 	sprintf(msg, "HeatMaster Finished!\r\n");
 	HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
-}
-
-void getTemps(void){
-	//temps.cur_meat = meat_temp_sensor.read_temp_fahrenheit();
-	//temps.cur_grill = grill_temp_sensor.read_temp_fahrenheit();
-	//temps.cur_flame = flame_temp_sensor.read_temp_fahrenheit();
 }
 
 FSM_State SetHandler(void){
@@ -237,6 +260,7 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_USART3_UART_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   FSM_State NextState = Set_State;
@@ -244,7 +268,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //while (1) {
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -276,7 +300,7 @@ int main(void)
 		  }
 	  }
 	  displayFinishedMSG();
-  //}
+  }
   /* USER CODE END 3 */
 }
 
@@ -402,6 +426,51 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 0;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -461,6 +530,10 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_PowerSwitchOn_GPIO_Port, USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6
+                          |GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : USER_Btn_Pin */
   GPIO_InitStruct.Pin = USER_Btn_Pin;
@@ -525,6 +598,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_VBUS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PD3 PD4 PD5 PD6
+                           PD7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6
+                          |GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : RMII_TX_EN_Pin RMII_TXD0_Pin */
   GPIO_InitStruct.Pin = RMII_TX_EN_Pin|RMII_TXD0_Pin;

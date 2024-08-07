@@ -17,8 +17,7 @@ Block for given time in microseconds by waiting for the htim ticks
 void DS18B20::delay_us(uint16_t us)
 {
 	_tim->Instance->CNT = 0;
-	while (_tim->Instance->CNT < us)
-		;
+	while (_tim->Instance->CNT < us);
 }
 
 void DS18B20::set_data_pin(bool on)

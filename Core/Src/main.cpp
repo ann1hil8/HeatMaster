@@ -42,6 +42,10 @@
 #define GRILL_PORT GPIOB
 #define FLAME_PIN GPIO_PIN_15
 #define FLAME_PORT GPIOB
+//#define MOTOR_PWM_PIN PE9
+
+#define PWM_MIN 3250
+#define PWM_MAX 6500
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -88,6 +92,7 @@ struct Temps temps;
 char msg[128]; //Buffer for string that will be sent through UART3
 
 bool food_cooked = false;
+bool isGrillOn = false;
 
 typedef enum {
 	Set_State,
@@ -97,6 +102,32 @@ typedef enum {
 	Range_State,
 	Off_State
 } FSM_State;
+
+void turnGrillOn(){
+	// turn servo on
+	// open solenoid
+	// loop ignite flame until flame
+	isGrillOn = true;
+}
+
+void turnGrillOff(){
+	// turn servo off
+	// close solenoid
+	isGrillOn = false;
+}
+
+void getUserTemps(){
+	temps.set_grill = 300.00;
+	temps.set_meat = 165.00;
+	/*
+	uint8_t data[10] = {0};
+	sprintf(msg, "Meat Temp: \r\n");
+	HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	HAL_UART_Receive(&huart3, data, 10, 1000);
+	sprintf(msg, "Ret Meat Temp: %c\r\n", data[0]);
+	HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	*/
+}
 
 void displayStatus(){
 	  sprintf(msg, "HeatMaster Status:\r\n");
@@ -114,16 +145,16 @@ void displayFinishedMSG(){
 }
 
 void getTemps(void){
-	temps.cur_meat = meat_temp_sensor.read_temp_fahrenheit();;
-	temps.cur_grill = grill_temp_sensor.read_temp_fahrenheit();;
-	temps.cur_flame = flame_temp_sensor.read_temp_fahrenheit();;
+	//temps.cur_meat = meat_temp_sensor.read_temp_fahrenheit();
+	//temps.cur_grill = grill_temp_sensor.read_temp_fahrenheit();
+	//temps.cur_flame = flame_temp_sensor.read_temp_fahrenheit();
 }
 
 FSM_State SetHandler(void){
-	if(temps.cur_meat < temps.set_meat){ // needs more cooking
+	if(temps.set_meat > temps.cur_meat){ // needs more cooking
 		return Range_State;
-	} else { // done cooking
-		return Off_State;
+	} else {
+		return Off_State; // done cooking
 	}
 }
 
@@ -139,8 +170,13 @@ FSM_State HeatHandler(void){
 	// bump up the heat a little
 	// if the servo is maxed out then stay maxed out
 	// if the grill is off then turn the grill on
-	//temps.cur_meat += 1;
-	//temps.cur_grill += 2;
+	if(isGrillOn){
+		if(TIM1->CCR1 < PWM_MAX){
+			TIM1->CCR1 += 10;
+		}
+	} else {
+		turnGrillOn();
+	}
 	return Idle_State;
 }
 
@@ -148,14 +184,20 @@ FSM_State CoolHandler(void){
 	// Insert code to handle the Cool state.
 	// turn the heat down a little
 	// if the servo is maxed out then turn the grill off.
-	//temps.cur_grill -= 1;
+	if(isGrillOn){
+		if(TIM1->CCR1 > PWM_MIN){
+			TIM1->CCR1 -= 10;
+		}
+	} else {
+		turnGrillOff();
+	}
 	return Idle_State;
 }
 
 FSM_State RangeHandler(void){
 	// Insert code to handle the Range state.
 	getTemps();
-	if(temps.cur_grill < temps.set_grill){ // needs to heat
+	if(temps.set_grill > temps.cur_grill){ // needs to heat
 		return Heat_State;
 	} else { // needs to cool
 		return Cool_State;
@@ -196,19 +238,18 @@ int main(void)
   MX_TIM1_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   FSM_State NextState = Set_State;
-  temps.set_grill = GRILL_TEMP;
-  //temps.cur_grill = 300.00;
-  temps.set_meat = MEAT_TEMP;
-  //temps.cur_meat = 140.00;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1) {
+  //while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  getUserTemps();
+	  turnGrillOn();
 	  // Here is our FSM that will continue to loop while the food is not cooked.
 	  while(!food_cooked){
 		  switch(NextState){
@@ -235,7 +276,7 @@ int main(void)
 		  }
 	  }
 	  displayFinishedMSG();
-  }
+  //}
   /* USER CODE END 3 */
 }
 
@@ -294,23 +335,29 @@ static void MX_TIM1_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 16-1;
+  htim1.Init.Prescaler = 4;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 0xFFF-1;
+  htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
   if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -321,9 +368,36 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.BreakFilter = 0;
+  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
+  sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
+  sBreakDeadTimeConfig.Break2Filter = 0;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
 
 }
 
@@ -378,6 +452,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
 

@@ -34,7 +34,14 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define MEAT_TEMP 165
+#define GRILL_TEMP 350
+#define MEAT_PIN GPIO_PIN_13
+#define MEAT_PORT GPIOB
+#define GRILL_PIN GPIO_PIN_14
+#define GRILL_PORT GPIOB
+#define FLAME_PIN GPIO_PIN_15
+#define FLAME_PORT GPIOB
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -63,9 +70,9 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-DS18B20 meat_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_PIN_13);
-DS18B20 grill_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_PIN_13);
-DS18B20 flame_temp_sensor = DS18B20(&htim1, GPIOB, GPIO_PIN_13);
+DS18B20 meat_temp_sensor = DS18B20(&htim1, MEAT_PORT, MEAT_PIN);
+DS18B20 grill_temp_sensor = DS18B20(&htim1, GRILL_PORT, GRILL_PIN);
+DS18B20 flame_temp_sensor = DS18B20(&htim1, FLAME_PORT, FLAME_PIN);
 
 struct Temps {
 	float cur_meat;
@@ -96,7 +103,7 @@ void displayStatus(){
 	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
 	  sprintf(msg, "Meat Set:  %.2f\tCur: %.2f\r\n", temps.set_meat, temps.cur_meat);
 	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
-	  sprintf(msg, "Grill Set: %.2f\tCur: %.2f\r\n", temps.set_grill, temps.cur_grill);
+	  sprintf(msg, "Grill Set: %.2f\tCur: %.2f\r\n\n", temps.set_grill, temps.cur_grill);
 	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
 	  HAL_Delay(500); // 500ms delay before we send next message.
 }
@@ -107,9 +114,9 @@ void displayFinishedMSG(){
 }
 
 void getTemps(void){
-	//temps.cur_meat = meat_temp_sensor.read_temp_fahrenheit();;
-	//temps.cur_grill = grill_temp_sensor.read_temp_fahrenheit();;
-	//temps.cur_flame = flame_temp_sensor.read_temp_fahrenheit();;
+	temps.cur_meat = meat_temp_sensor.read_temp_fahrenheit();;
+	temps.cur_grill = grill_temp_sensor.read_temp_fahrenheit();;
+	temps.cur_flame = flame_temp_sensor.read_temp_fahrenheit();;
 }
 
 FSM_State SetHandler(void){
@@ -122,8 +129,8 @@ FSM_State SetHandler(void){
 
 FSM_State IdleHandler(void){
 	// Insert code to handle the Idle state.
-	displayStatus();
-	//HAL_Delay(500);
+	displayStatus(); // there is also a delay in this function
+	HAL_Delay(500);
 	return Set_State;
 }
 
@@ -132,8 +139,8 @@ FSM_State HeatHandler(void){
 	// bump up the heat a little
 	// if the servo is maxed out then stay maxed out
 	// if the grill is off then turn the grill on
-	temps.cur_meat += 1;
-	temps.cur_grill += 2;
+	//temps.cur_meat += 1;
+	//temps.cur_grill += 2;
 	return Idle_State;
 }
 
@@ -141,7 +148,7 @@ FSM_State CoolHandler(void){
 	// Insert code to handle the Cool state.
 	// turn the heat down a little
 	// if the servo is maxed out then turn the grill off.
-	temps.cur_grill -= 1;
+	//temps.cur_grill -= 1;
 	return Idle_State;
 }
 
@@ -190,16 +197,15 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
   FSM_State NextState = Set_State;
-  temps.set_grill = 350.00;
-  temps.cur_grill = 300.00;
-  temps.set_meat = 165.00;
-  temps.cur_meat = 140.00;
+  temps.set_grill = GRILL_TEMP;
+  //temps.cur_grill = 300.00;
+  temps.set_meat = MEAT_TEMP;
+  //temps.cur_meat = 140.00;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //while (1)
-  //{
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -231,7 +237,7 @@ int main(void)
 	  displayFinishedMSG();
   }
   /* USER CODE END 3 */
-//}
+}
 
 /**
   * @brief System Clock Configuration

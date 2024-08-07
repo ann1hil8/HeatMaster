@@ -58,34 +58,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := HeatMaster_cpp
+BUILD_ARTIFACT_NAME := HeatMaster
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-HeatMaster_cpp.elf \
+HeatMaster.elf \
 
 MAP_FILES += \
-HeatMaster_cpp.map \
+HeatMaster.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-HeatMaster_cpp.list \
+HeatMaster.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: HeatMaster_cpp.elf secondary-outputs
+main-build: HeatMaster.elf secondary-outputs
 
 # Tool invocations
-HeatMaster_cpp.elf HeatMaster_cpp.map: $(OBJS) $(USER_OBJS) C:\Users\Ryan\Desktop\Summer2024\CPE185\Lab\STM32\HeatMaster_cpp\STM32F767ZITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "HeatMaster_cpp.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\Ryan\Desktop\Summer2024\CPE185\Lab\STM32\HeatMaster_cpp\STM32F767ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="HeatMaster_cpp.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+HeatMaster.elf HeatMaster.map: $(OBJS) $(USER_OBJS) C:\Users\Ryan\Desktop\Summer2024\CPE185\Lab\STM32\HeatMaster\STM32F767ZITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-g++ -o "HeatMaster.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\Ryan\Desktop\Summer2024\CPE185\Lab\STM32\HeatMaster\STM32F767ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="HeatMaster.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -94,14 +94,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-HeatMaster_cpp.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "HeatMaster_cpp.list"
+HeatMaster.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "HeatMaster.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) HeatMaster_cpp.elf HeatMaster_cpp.list HeatMaster_cpp.map default.size.stdout
+	-$(RM) HeatMaster.elf HeatMaster.list HeatMaster.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

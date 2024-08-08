@@ -148,14 +148,14 @@ void turnGrillOff(){
 void getUserTemps(){
 	temps.set_grill = 300.00;
 	temps.set_meat = 165.00;
-
+/*
 	uint8_t data[10] = {0};
 	sprintf(msg, "Meat Temp: \r\n");
 	HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
 	HAL_UART_Receive(&huart3, data, 10, 1000);
 	sprintf(msg, "Ret Meat Temp: %c\r\n", data[0]);
 	HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
-
+*/
 }
 
 void displayStatus(){
@@ -278,6 +278,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+  while(1){
+	  getTemps();
+  }
 	  getUserTemps();
 	  turnGrillOn();
 	  // Here is our FSM that will continue to loop while the food is not cooked.
@@ -450,7 +453,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 20;
+  htim3.Init.Prescaler = 13;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -475,6 +478,7 @@ static void MX_TIM3_Init(void)
   /* USER CODE END TIM3_Init 2 */
 
 }
+
 
 /**
   * @brief USART3 Initialization Function

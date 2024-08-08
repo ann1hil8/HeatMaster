@@ -1,6 +1,6 @@
 ../Core/Src/main.cpp:113:6:void getTemps()	1
 ../Core/Src/main.cpp:119:6:bool ignition()	2
-../Core/Src/main.cpp:131:6:void turnGrillOn()	2
+../Core/Src/main.cpp:131:6:void turnGrillOn()	1
 ../Core/Src/main.cpp:141:6:void turnGrillOff()	1
 ../Core/Src/main.cpp:148:6:void getUserTemps()	1
 ../Core/Src/main.cpp:161:6:void displayStatus()	1
@@ -11,11 +11,9 @@
 ../Core/Src/main.cpp:206:11:FSM_State CoolHandler()	3
 ../Core/Src/main.cpp:220:11:FSM_State RangeHandler()	2
 ../Core/Src/main.cpp:236:5:int main()	8
-../Core/Src/main.cpp:311:6:void SystemClock_Config()	3
-../Core/Src/main.cpp:353:13:void MX_TIM1_Init()	7
-../Core/Src/main.cpp:433:13:void MX_TIM3_Init()	4
-../Core/Src/main.cpp:478:13:void MX_USART3_UART_Init()	2
-../Core/Src/main.cpp:513:13:void MX_GPIO_Init()	1
-../Core/Src/main.cpp:631:6:void Error_Handler()	1
-../Core/Src/main.cpp:640:1:void __static_initialization_and_destruction_0(int, int)	3
-../Core/Src/main.cpp:640:1:cpp)	1
+../Core/Src/main.cpp:317:6:void SystemClock_Config()	3
+../Core/Src/main.cpp:359:13:void MX_TIM1_Init()	7
+../Core/Src/main.cpp:439:13:void MX_TIM3_Init()	4
+../Core/Src/main.cpp:484:13:void MX_USART3_UART_Init()	2
+../Core/Src/main.cpp:519:13:void MX_GPIO_Init()	1
+../Core/Src/main.cpp:640:6:void Error_Handler()	1

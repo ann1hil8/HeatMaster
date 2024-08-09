@@ -66,15 +66,11 @@ void DS18B20::start_sensor()
 	delay_us(400);
 }
 
-void DS18B20::writeData(uint8_t data)
-{
+void DS18B20::writeData(uint8_t data) {
 	set_pin_output();
 
-	for (uint8_t i = 0; i < 8; i++)
-	{
-
-		if (data & (1 << i))
-		{
+	for (uint8_t i = 0; i < 8; i++) {
+		if (data & (1 << i)) {
 			set_pin_output();
 			set_data_pin(false);
 			delay_us(1);
@@ -128,6 +124,7 @@ float DS18B20::read_temp_celsius()
 	writeData(0x44);
 	HAL_Delay(800);
 	start_sensor();
+	HAL_Delay(1);
 	writeData(0xCC);
 	writeData(0xBE);
 

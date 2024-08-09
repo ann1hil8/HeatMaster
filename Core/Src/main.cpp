@@ -49,8 +49,9 @@
 #define SOLENOID_PORT GPIOD
 //#define MOTOR_PWM_PIN PE9
 
-#define PWM_MIN 1200
-#define PWM_MAX 8350
+#define PWM_MIN 1500
+#define PWM_MAX 8000
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -110,6 +111,11 @@ typedef enum {
 	Off_State
 } FSM_State;
 
+void delay (uint32_t us) {
+    __HAL_TIM_SET_COUNTER(&htim3,0);
+    while ((__HAL_TIM_GET_COUNTER(&htim3))<us);
+}
+
 void getTemps(){
 	temps.cur_meat = meat_temp_sensor->read_temp_fahrenheit();
 	temps.cur_grill = grill_temp_sensor->read_temp_fahrenheit();
@@ -118,13 +124,13 @@ void getTemps(){
 
 bool ignition(){
 	HAL_GPIO_WritePin(IGNITION_PORT, IGNITION_PIN, GPIO_PIN_SET);
-	HAL_Delay(1000);
+	HAL_Delay(2000);
 	HAL_GPIO_WritePin(IGNITION_PORT, IGNITION_PIN, GPIO_PIN_RESET);
 	getTemps();
 	if(temps.cur_flame > temps.cur_grill){
-		return true;
-	} else {
 		return false;
+	} else {
+		return true;
 	}
 }
 
@@ -132,9 +138,9 @@ void turnGrillOn(){
 	// turn servo on
 	TIM1->CCR1 = PWM_MAX;
 	HAL_GPIO_WritePin(SOLENOID_PORT, SOLENOID_PIN, GPIO_PIN_SET); // open solenoid
-	//while(ignition()){  // loop ignite flame until flame
-	//	HAL_Delay(500);
-	//}
+	while(ignition()){  // loop ignite flame until flame
+		HAL_Delay(500);
+	}
 	isGrillOn = true;
 }
 
@@ -194,11 +200,11 @@ FSM_State HeatHandler(void){
 	// if the servo is maxed out then stay maxed out
 	// if the grill is off then turn the grill on
 	if(isGrillOn){
-		if(TIM1->CCR1 < PWM_MAX){
+		if(TIM1->CCR1 >= PWM_MAX){
+			turnGrillOff();
+		} else {
 			TIM1->CCR1 += 10;
 		}
-	} else {
-		turnGrillOn();
 	}
 	return Idle_State;
 }
@@ -208,12 +214,13 @@ FSM_State CoolHandler(void){
 	// turn the heat down a little
 	// if the servo is maxed out then turn the grill off.
 	if(isGrillOn){
-		if(TIM1->CCR1 > PWM_MIN){
+		if(TIM1->CCR1 <= PWM_MIN){
+			turnGrillOff();
+		} else {
 			TIM1->CCR1 -= 10;
 		}
-	} else {
-		turnGrillOff();
 	}
+
 	return Idle_State;
 }
 
@@ -278,9 +285,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  while(1){
-	  getTemps();
-  }
+
 	  getUserTemps();
 	  turnGrillOn();
 	  // Here is our FSM that will continue to loop while the food is not cooked.
@@ -333,8 +338,21 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 16;
+  RCC_OscInitStruct.PLL.PLLN = 192;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Activate the Over-Drive mode
+  */
+  if (HAL_PWREx_EnableOverDrive() != HAL_OK)
   {
     Error_Handler();
   }
@@ -343,12 +361,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -375,7 +393,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 4;
+  htim1.Init.Prescaler = 29;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -453,7 +471,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 13;
+  htim3.Init.Prescaler = 93;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -478,7 +496,6 @@ static void MX_TIM3_Init(void)
   /* USER CODE END TIM3_Init 2 */
 
 }
-
 
 /**
   * @brief USART3 Initialization Function

@@ -82,9 +82,9 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-DS18B20 *meat_temp_sensor;// = DS18B20(&htim3, MEAT_PORT, MEAT_PIN);
-DS18B20 *grill_temp_sensor;// = DS18B20(&htim3, GRILL_PORT, GRILL_PIN);
-DS18B20 *flame_temp_sensor;// = DS18B20(&htim3, FLAME_PORT, FLAME_PIN);
+DS18B20 *meat_temp_sensor;
+DS18B20 *grill_temp_sensor;
+DS18B20 *flame_temp_sensor;
 
 struct Temps {
 	float cur_meat;

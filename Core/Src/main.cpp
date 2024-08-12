@@ -34,8 +34,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MEAT_TEMP 165
-#define GRILL_TEMP 350
+#define MEAT_TEMP 90
+#define GRILL_TEMP 80
 #define MEAT_PIN GPIO_PIN_6
 #define MEAT_PORT GPIOD
 #define GRILL_PIN GPIO_PIN_7
@@ -101,6 +101,7 @@ char msg[128]; //Buffer for string that will be sent through UART3
 
 bool food_cooked = false;
 bool isGrillOn = false;
+bool ignitionStatus;
 
 typedef enum {
 	Set_State,
@@ -110,6 +111,9 @@ typedef enum {
 	Range_State,
 	Off_State
 } FSM_State;
+
+void displayStatus();
+FSM_State SetHandler();
 
 void delay (uint32_t us) {
     __HAL_TIM_SET_COUNTER(&htim3,0);
@@ -127,7 +131,7 @@ bool ignition(){
 	HAL_Delay(2000);
 	HAL_GPIO_WritePin(IGNITION_PORT, IGNITION_PIN, GPIO_PIN_RESET);
 	getTemps();
-	if(temps.cur_flame > temps.cur_grill){
+	if(temps.cur_flame > temps.cur_grill + 10){
 		return false;
 	} else {
 		return true;
@@ -137,10 +141,18 @@ bool ignition(){
 void turnGrillOn(){
 	// turn servo on
 	TIM1->CCR1 = PWM_MAX;
+	HAL_Delay(5000);
 	HAL_GPIO_WritePin(SOLENOID_PORT, SOLENOID_PIN, GPIO_PIN_SET); // open solenoid
+	ignitionStatus = true;
 	while(ignition()){  // loop ignite flame until flame
+		getTemps();
+		displayStatus();
+		if(SetHandler() == Off_State){
+			continue;
+		}
 		HAL_Delay(500);
 	}
+	ignitionStatus = false;
 	isGrillOn = true;
 }
 
@@ -152,8 +164,8 @@ void turnGrillOff(){
 }
 
 void getUserTemps(){
-	temps.set_grill = 300.00;
-	temps.set_meat = 165.00;
+	temps.set_grill = GRILL_TEMP;
+	temps.set_meat = MEAT_TEMP;
 /*
 	uint8_t data[10] = {0};
 	sprintf(msg, "Meat Temp: \r\n");
@@ -167,10 +179,22 @@ void getUserTemps(){
 void displayStatus(){
 	  sprintf(msg, "HeatMaster Status:\r\n");
 	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
-	  sprintf(msg, "Meat Set:  %.2f\tCur: %.2f\r\n", temps.set_meat, temps.cur_meat);
+	  sprintf(msg, "Meat Cur:  %.2f\tSet: %.2f\r\n", temps.cur_meat, temps.set_meat);
 	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
-	  sprintf(msg, "Grill Set: %.2f\tCur: %.2f\r\n\n", temps.set_grill, temps.cur_grill);
+	  sprintf(msg, "Grill Cur: %.2f\tSet: %.2f\r\n", temps.cur_grill, temps.set_grill);
 	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	  sprintf(msg, "Flame Cur: %.2f\r\n", temps.cur_flame);
+	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	  // is grill on
+	  sprintf(msg, "Grill %s\r\n", isGrillOn ? "On" : "Off");
+	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	  // ignition on
+	  sprintf(msg, "Ignition %s\r\n", ignitionStatus ? "On" : "Off");
+	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+	  // propane on
+	  sprintf(msg, "Propane %s\r\n\n", HAL_GPIO_ReadPin(SOLENOID_PORT, SOLENOID_PIN) ? "On" : "Off");
+	  HAL_UART_Transmit(&huart3, (uint8_t*) msg, strlen(msg), HAL_MAX_DELAY);
+
 	  HAL_Delay(500); // 500ms delay before we send next message.
 }
 
@@ -201,10 +225,12 @@ FSM_State HeatHandler(void){
 	// if the grill is off then turn the grill on
 	if(isGrillOn){
 		if(TIM1->CCR1 >= PWM_MAX){
-			turnGrillOff();
+			TIM1->CCR1 = PWM_MAX;
 		} else {
-			TIM1->CCR1 += 10;
+			TIM1->CCR1 += 500;
 		}
+	} else {
+		turnGrillOn();
 	}
 	return Idle_State;
 }
@@ -217,7 +243,7 @@ FSM_State CoolHandler(void){
 		if(TIM1->CCR1 <= PWM_MIN){
 			turnGrillOff();
 		} else {
-			TIM1->CCR1 -= 10;
+			TIM1->CCR1 -= 500;
 		}
 	}
 
